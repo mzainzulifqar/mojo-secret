@@ -1,0 +1,15 @@
+{
+    "name": "infisical/cli-tool",
+    "description": "Cross-platform PHP CLI for Infisical integration",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Infisical\\CliTool\\": "src/"
+        }
+    },
+    "bin": ["bin/mytool"]
+}

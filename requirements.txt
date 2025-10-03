@@ -1,0 +1,228 @@
+0) Requirements (already have Composer ✅)
+
+PHP 8.0+
+
+Composer
+
+Git
+
+1) Make a fresh project
+mkdir mytool && cd mytool
+composer init --name="yourvendor/mytool" --description="Cross-platform PHP CLI" --type="library" --license="MIT" --no-interaction
+mkdir -p bin src
+
+2) Add the CLI entry file
+
+bin/mytool
+
+#!/usr/bin/env php
+<?php
+require __DIR__ . '/../vendor/autoload.php';
+
+use YourVendor\MyTool\App;
+
+exit(App::run($argv));
+
+
+(macOS/Linux only for local testing)
+
+chmod +x bin/mytool
+
+3) Add minimal app logic
+
+src/App.php
+
+<?php
+namespace YourVendor\MyTool;
+
+final class App
+{
+    public static function run(array $argv): int
+    {
+        array_shift($argv); // remove script name
+        $cmd = $argv[0] ?? 'help';
+
+        switch ($cmd) {
+            case 'call':
+                $url   = self::opt($argv, 'url', 'https://httpbin.org/post');
+                $note  = self::opt($argv, 'note', 'hello');
+                $token = getenv('MYTOOL_TOKEN') ?: self::opt($argv, 'token');
+
+                [$code, $body] = self::httpPost($url, ['note'=>$note], $token);
+                echo "HTTP $code\n$body\n";
+                return ($code >= 200 && $code < 300) ? 0 : 1;
+
+            case 'help':
+            default:
+                echo "Usage:\n";
+                echo "  mytool help\n";
+                echo "  mytool call --url=https://api.example.com/do --note=hi [--token=XYZ]\n";
+                return 0;
+        }
+    }
+
+    private static function opt(array $argv, string $key, $default=null) {
+        foreach ($argv as $a) {
+            if (str_starts_with($a, "--$key=")) {
+                return substr($a, strlen("--$key="));
+            }
+        }
+        return $default;
+    }
+
+    private static function httpPost(string $url, array $data, ?string $token): array {
+        $ch = curl_init($url);
+        $headers = ['Content-Type: application/json'];
+        if ($token) $headers[] = "Authorization: Bearer $token";
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+        $res = curl_exec($ch);
+        if ($res === false) {
+            $err = curl_error($ch);
+            curl_close($ch);
+            fwrite(STDERR, "cURL error: $err\n");
+            return [0, ""];
+        }
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return [$code, $res];
+    }
+}
+
+4) Update composer.json (so Composer exposes your CLI)
+
+Open composer.json and make sure it contains:
+
+{
+  "name": "yourvendor/mytool",
+  "description": "Cross-platform PHP CLI",
+  "type": "library",
+  "require": {
+    "php": ">=8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "YourVendor\\MyTool\\": "src/"
+    }
+  },
+  "bin": ["bin/mytool"]
+}
+
+
+Install autoloader:
+
+composer install
+
+5) Add helpful repo files
+
+.gitignore
+
+/vendor/
+composer.lock
+.env
+.DS_Store
+
+
+LICENSE (MIT example)
+
+MIT License
+
+Copyright (c) 2025 Your Name
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+...
+
+
+README.md (short)
+
+# MyTool
+
+Cross-platform PHP CLI. Install globally with Composer and run `mytool`.
+
+## Install (global, from GitHub)
+```bash
+composer global config repositories.mytool vcs https://github.com/yourvendor/mytool
+composer global require yourvendor/mytool:dev-main
+
+
+
+Usage
+mytool help
+mytool call --url=https://httpbin.org/post --note=hello --token=XYZ
+
+
+---
+
+# 6) Test locally before publishing
+
+```bash
+php bin/mytool help
+php bin/mytool call --note=test
+# or on mac/Linux, after chmod +x:
+./bin/mytool help
+
+7) Initialize git & first commit
+git init
+git add .
+git commit -m "feat: initial CLI"
+git branch -M main
+
+8) Create GitHub repo & push
+
+Option A (manual):
+
+Create a new repo on GitHub named mytool (no README/license—already local)
+
+Connect and push:
+
+git remote add origin https://github.com/yourvendor/mytool.git
+git push -u origin main
+
+
+Option B (GitHub CLI):
+
+gh repo create yourvendor/mytool --private --source=. --remote=origin --push
+
+9) Install globally (from GitHub VCS)
+
+Use this if you didn’t publish to Packagist yet.
+
+composer global config repositories.mytool vcs https://github.com/yourvendor/mytool
+composer global require yourvendor/mytool:dev-main
+
+
+Ensure Composer’s global bin is on your PATH:
+
+macOS/Linux (bash/zsh):
+
+echo 'export PATH="$HOME/.composer/vendor/bin:$HOME/.config/composer/vendor/bin:$PATH"' >> ~/.zshrc
+exec $SHELL -l
+
+
+Windows (User PATH):
+
+%APPDATA%\Composer\vendor\bin
+
+
+Restart PowerShell/CMD.
+
+Test:
+
+mytool help
+mytool call --url=https://httpbin.org/post --note=hello
+
+10) (Optional) Publish to Packagist
+
+Make the GitHub repo public (or leave private and use GitHub token later).
+
+Go to https://packagist.org/
+ → Submit → paste repo URL.
+
+After indexing, users can install with:
+
+composer global require yourvendor/mytool:^1.0
