@@ -2,6 +2,6 @@
 <?php
 require __DIR__ . '/../vendor/autoload.php';
 
-use Infisical\CliTool\App;
+use Mojo\CliTool\App;
 
 exit(App::run($argv));
