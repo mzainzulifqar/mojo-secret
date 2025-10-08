@@ -294,11 +294,11 @@ final class App
         $apiUrl = self::getApiUrl();
         echo "✓ Authentication successful\n";
 
-        // Step 3: Push secrets individually (handles existing secrets)
-        echo "3. Pushing secrets to Infisical...\n";
+        // Step 3: Push secrets using bulk API
+        echo "3. Pushing secrets to Infisical using bulk API...\n";
         $projectConfig = self::getProjectConfig();
         if (!$projectConfig || !isset($projectConfig['projectId'])) {
-            fwrite(STDERR, "Error: No project configuration found. Run 'mojocli create-project' first.\n");
+            fwrite(STDERR, "Error: No project configuration found. Run 'mojocli init' first.\n");
             return 1;
         }
         $projectId = $projectConfig['projectId'] ?? $projectConfig['workspaceId'] ?? null;
@@ -312,66 +312,41 @@ final class App
         echo "📋 Project ID: $projectId\n";
         echo "🌍 Environment: $env\n";
 
-        $successCount = 0;
-        $errorCount = 0;
-        $errors = [];
-
+        // Format secrets for bulk upsert API
+        $formattedSecrets = [];
         foreach ($envVars as $secret) {
-            $secretKey = $secret['secretKey'];
-            echo "📝 Updating secret: $secretKey... ";
-
-            // Try to update existing secret first
-            $updateUrl = $apiUrl . '/api/v4/secrets/' . urlencode($secretKey);
-            $updateData = [
-                'projectId' => $projectId,
-                'environment' => $env,
-                'secretPath' => '/',
+            $formattedSecrets[] = [
+                'secretKey' => $secret['secretKey'],
                 'secretValue' => $secret['secretValue'],
-                'secretComment' => $secret['secretComment'] ?? ''
+                'secretPath' => '/',
+                'secretComment' => $secret['secretComment'] ?? '',
+                'skipMultilineEncoding' => false,
+                'secretMetadata' => []
             ];
-
-            [$updateCode, $updateBody] = self::httpPatch($updateUrl, $updateData, $token);
-
-            if ($updateCode >= 200 && $updateCode < 300) {
-                echo "✅ Updated\n";
-                $successCount++;
-            } else {
-                // If update fails, try to create new secret
-                $createUrl = $apiUrl . '/api/v4/secrets/' . urlencode($secretKey);
-                $createData = [
-                    'projectId' => $projectId,
-                    'environment' => $env,
-                    'secretPath' => '/',
-                    'secretKey' => $secretKey,
-                    'secretValue' => $secret['secretValue'],
-                    'secretComment' => $secret['secretComment'] ?? ''
-                ];
-
-                [$createCode, $createBody] = self::httpPost($createUrl, $createData, $token);
-
-                if ($createCode >= 200 && $createCode < 300) {
-                    echo "✅ Created\n";
-                    $successCount++;
-                } else {
-                    echo "❌ Failed\n";
-                    $errorCount++;
-                    $errors[] = "$secretKey: HTTP $createCode - " . substr($createBody, 0, 100);
-                }
-            }
         }
 
-        echo "\n📊 Results:\n";
-        echo "✅ Successful: $successCount\n";
-        if ($errorCount > 0) {
-            echo "❌ Failed: $errorCount\n";
-            echo "\nErrors:\n";
-            foreach ($errors as $error) {
-                echo "  • $error\n";
-            }
-        }
-        echo "\nSecrets push completed!\n";
+        // Use bulk upsert API endpoint
+        $bulkUrl = $apiUrl . '/api/v4/secrets/batch';
+        $bulkData = [
+            'projectId' => $projectId,
+            'environment' => $env,
+            'secretPath' => '/',
+            'mode' => 'upsert',
+            'secrets' => $formattedSecrets
+        ];
 
-        return 0;
+        echo "📤 Upserting " . count($formattedSecrets) . " secrets (create or update)...\n";
+        [$bulkCode, $bulkBody] = self::httpPatch($bulkUrl, $bulkData, $token);
+
+        if ($bulkCode >= 200 && $bulkCode < 300) {
+            echo "✅ Successfully pushed " . count($formattedSecrets) . " secrets!\n";
+            echo "🎉 Bulk upload completed successfully!\n";
+            return 0;
+        } else {
+            echo "❌ Bulk upload failed: HTTP $bulkCode\n";
+            echo "📝 Response: " . substr($bulkBody, 0, 500) . "\n";
+            return 1;
+        }
     }
 
     private static function initWorkflow(array $argv): int {
