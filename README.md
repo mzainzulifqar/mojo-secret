@@ -10,6 +10,19 @@ composer global require mojo/cli
 export PATH="$PATH:$HOME/.composer/vendor/bin"
 ```
 
+### Update Package
+```bash
+# Update to latest version
+composer global update mojo/cli
+
+# Check current version
+composer global show mojo/cli
+
+# Force reinstall if needed
+composer global remove mojo/cli
+composer global require mojo/cli
+```
+
 ### Local Installation
 ```bash
 git clone this-repo
@@ -80,33 +93,30 @@ echo "Client ID: $INFISICAL_CLIENT_ID"
 ### Initialize Project
 ```bash
 # Interactive environment selection
-mojocliinit --name="Project Name"
+mojocli init --name="Project Name"
 
 # Specify environment directly
-mojocliinit --name="Project Name" --env="dev"
-mojocliinit --name="Project Name" --env="staging"
-mojocliinit --name="Project Name" --env="production"
+mojocli init --name="Project Name" --env="dev"
+mojocli init --name="Project Name" --env="staging"
+mojocli init --name="Project Name" --env="prod"
 ```
 Creates `infisical.json` in current directory.
 
-### Fetch Secrets
+### Fetch Secrets (Pull)
 ```bash
 # Interactive environment selection with custom output
-mojoclistartup --output=.env.local
+mojocli pull --output=.env.local
 
 # Specify environment and output file
-mojoclistartup --env=dev --output=.env.local
-mojoclistartup --env=staging --output=.env.staging
-mojoclistartup --env=production --output=.env.prod
+mojocli pull --env=dev --output=.env.local
+mojocli pull --env=staging --output=.env.staging
+mojocli pull --env=prod --output=.env.prod
 
 # Export to shell
 export $(cat .env.local | xargs)
 
-# Alternative: fetch to .env (interactive environment selection)
-mojoclisync
-
-# Get raw secrets (interactive environment selection)
-mojocliinfisical-secrets
+# Pull directly to .env file
+mojocli pull --env=dev --output=.env
 ```
 
 ### Push Secrets
@@ -114,19 +124,19 @@ mojocliinfisical-secrets
 # Edit .env with your secrets first
 vim .env
 
-# Push to Infisical (interactive environment selection)
-mojoclipush-secrets
+# Push to Infisical with environment selection
+mojocli push --env=dev
+mojocli push --env=staging
+mojocli push --env=prod
+
+# Interactive environment selection (if no --env specified)
+mojocli push
 ```
 
-### Project Management
-```bash
-# Create new project (interactive environment selection)
-mojoclicreate-project --name="Project Name"
-```
 
 ### Help
 ```bash
-mojoclihelp
+mojocli help
 ```
 
 ## 🔄 Complete Workflow
@@ -134,10 +144,10 @@ mojoclihelp
 ### Project Setup
 ```bash
 # Initialize project with specific environment
-mojocliinit --name="My Awesome Project" --env="dev"
+mojocli init --name="My Awesome Project" --env="dev"
 
 # Fetch secrets for development
-mojoclistartup --env=dev --output=.env.local
+mojocli pull --env=dev --output=.env.local
 
 # Export to current shell
 export $(cat .env.local | xargs)
@@ -149,21 +159,21 @@ export $(cat .env.local | xargs)
 vim .env
 
 # Push changes to Infisical
-mojoclipush-secrets
+mojocli push --env=dev
 
 # Fetch latest secrets
-mojoclistartup --env=dev --output=.env.local
+mojocli pull --env=dev --output=.env.local
 ```
 
 ### Multi-Environment Setup
 ```bash
 # Initialize project
-mojocliinit --name="My Project" --env="dev"
+mojocli init --name="My Project" --env="dev"
 
 # Fetch secrets for different environments
-mojoclistartup --env=dev --output=.env.dev
-mojoclistartup --env=staging --output=.env.staging
-mojoclistartup --env=production --output=.env.prod
+mojocli pull --env=dev --output=.env.dev
+mojocli pull --env=staging --output=.env.staging
+mojocli pull --env=prod --output=.env.prod
 
 # Use appropriate environment file
 export $(cat .env.dev | xargs)      # For development
@@ -176,19 +186,16 @@ export $(cat .env.prod | xargs)     # For production
 ### Test Commands
 ```bash
 # Test help
-php bin/mojocliclihelp
+php bin/mojocli help
 
 # Test init with environment
-php bin/mojoclicliinit --name="Test Project" --env="dev"
+php bin/mojocli init --name="Test Project" --env="dev"
 
 # Test fetch with environment
-php bin/mojocliclistartup --env=dev --output=.env.local
+php bin/mojocli pull --env=dev --output=.env.local
 
 # Test push
-php bin/mojocliclipush-secrets
-
-# Test project creation
-php bin/mojocliclicreate-project --name="New Project"
+php bin/mojocli push --env=dev
 ```
 
 ## 🏗️ Configuration
@@ -206,9 +213,13 @@ php bin/mojocliclicreate-project --name="New Project"
 The tool supports three environments:
 - **dev** (development) - Default
 - **staging** - For staging environment
-- **production** (or **prod**) - For production environment
+- **prod** (production) - For production environment
 
 Environment can be specified via `--env` parameter or selected interactively.
+
+**Supported environment values:**
+- CLI accepts: `dev`, `development`, `staging`, `stage`, `prod`, `production`
+- API uses: `dev`, `staging`, `prod` (automatically normalized)
 
 ### Hardcoded Settings
 - **API URL**: `https://secret.mojomosaic.com` (same for all environments)
