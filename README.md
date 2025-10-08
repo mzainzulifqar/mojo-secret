@@ -253,6 +253,122 @@ source ~/.zshrc    # or ~/.bashrc
 - Check that environment variables are properly set: `echo $INFISICAL_CLIENT_ID`
 - Ensure no truncated values in your shell profile
 
+### Windows-Specific Issues
+
+#### Command Not Found on Windows
+```powershell
+# Error: 'mojocli' is not recognized as the name of a cmdlet
+
+# Check if Composer bin directory is in PATH:
+echo $env:PATH
+
+# Find Composer global bin directory:
+composer global config bin-dir --absolute
+
+# Add to PATH (typical path):
+# Add C:\Users\YourUsername\AppData\Roaming\Composer\vendor\bin to system PATH
+
+# Alternative: Run directly with full path:
+C:\Users\YourUsername\AppData\Roaming\Composer\vendor\bin\mojocli help
+
+# Restart PowerShell after updating PATH
+```
+
+#### Windows Environment Variables
+```powershell
+# Set environment variables in PowerShell:
+$env:INFISICAL_CLIENT_ID = "your-client-id"
+$env:INFISICAL_CLIENT_SECRET = "your-client-secret"
+
+# For permanent setup, add to Windows Environment Variables via:
+# System Properties > Advanced > Environment Variables
+# Or use PowerShell profile:
+notepad $PROFILE
+# Add the export commands above to your PowerShell profile
+```
+
+### SSL Certificate Issues
+
+#### Self-Hosted Infisical Instances
+```bash
+# Error: SSL certificate problem: unable to get local issuer certificate
+# Error: cURL error: SSL certificate problem
+
+# Quick fix - Bypass SSL verification (less secure):
+export CURL_INSECURE=1
+# Windows PowerShell:
+$env:CURL_INSECURE = "1"
+
+# Then retry your command:
+mojocli init --name="Project Name"
+```
+
+#### SSL Certificate Solutions
+
+**Option 1: Update CA Certificates (Recommended)**
+```bash
+# Download latest CA bundle:
+curl -o cacert.pem https://curl.se/ca/cacert.pem
+
+# Set CA bundle path:
+export CURL_CA_BUNDLE="/path/to/cacert.pem"
+# Windows:
+$env:CURL_CA_BUNDLE = "C:\path\to\cacert.pem"
+```
+
+**Option 2: Configure for Self-Hosted HTTP**
+```bash
+# If your instance uses HTTP instead of HTTPS:
+export INFISICAL_URL="http://your-infisical-domain.com"
+# Windows:
+$env:INFISICAL_URL = "http://your-infisical-domain.com"
+```
+
+**Option 3: Add Self-Signed Certificate (Windows)**
+1. Visit your Infisical instance in browser
+2. Click the padlock → Certificate → Details → Copy to File
+3. Save as .cer file
+4. Double-click the .cer file → Install Certificate
+5. Choose "Local Machine" → "Trusted Root Certification Authorities"
+6. Restart your terminal
+
+**Option 4: Use Official Infisical CLI**
+```bash
+# Install official CLI (better SSL handling):
+npm install -g @infisical/cli
+
+# Login to self-hosted instance:
+infisical login --domain=your-infisical-domain.com
+```
+
+### Network and Connectivity Issues
+
+#### Proxy/Corporate Network
+```bash
+# If behind corporate proxy:
+export HTTP_PROXY="http://proxy.company.com:8080"
+export HTTPS_PROXY="http://proxy.company.com:8080"
+# Windows:
+$env:HTTP_PROXY = "http://proxy.company.com:8080"
+$env:HTTPS_PROXY = "http://proxy.company.com:8080"
+```
+
+#### Firewall Issues
+- Ensure outbound HTTPS (443) access to your Infisical instance
+- Check if your network blocks external API calls
+- Contact IT if corporate firewall blocks connections
+
+### Debug Mode
+```bash
+# Enable verbose output for debugging:
+export DEBUG=1
+# Windows:
+$env:DEBUG = "1"
+
+# Then run your command to see detailed error information
+mojocli init --name="Project Name"
+```
+
 ## 📄 License
 
 MIT
